@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 
+from routers import admin_router , user_router
+
 app = FastAPI()
 
-@app.get('/')
-def index():
-    return 'hey'
+app.include_router(admin_router)
+app.include_router(user_router)
