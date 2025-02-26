@@ -1,19 +1,19 @@
 """create all tables
 
-Revision ID: b2ad0da8247d
-Revises: 488d50ab3270
-Create Date: 2025-02-25 23:08:48.661677
+Revision ID: 8fb35793901d
+Revises: 
+Create Date: 2025-02-26 11:28:24.002497
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import mysql
+
 
 # revision identifiers, used by Alembic.
-revision: str = 'b2ad0da8247d'
-down_revision: Union[str, None] = '488d50ab3270'
+revision: str = '8fb35793901d'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -29,19 +29,31 @@ def upgrade() -> None:
     op.create_table('broker',
     sa.Column('broker_id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('phone_number', sa.Integer(), nullable=False),
+    sa.Column('phone_number', sa.String(length=20), nullable=False),
     sa.PrimaryKeyConstraint('broker_id'),
     sa.UniqueConstraint('phone_number')
+    )
+    op.create_table('user',
+    sa.Column('user_id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=False),
+    sa.Column('phone_no', sa.String(length=20), nullable=False),
+    sa.Column('password', sa.String(length=255), nullable=False),
+    sa.Column('invitation_code', sa.String(length=255), nullable=True),
+    sa.Column('invited_by', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['invited_by'], ['user.user_id'], ),
+    sa.PrimaryKeyConstraint('user_id'),
+    sa.UniqueConstraint('invitation_code'),
+    sa.UniqueConstraint('phone_no')
     )
     op.create_table('admin',
     sa.Column('admin_id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('phone_no', sa.Integer(), nullable=False),
+    sa.Column('phone_no', sa.String(length=20), nullable=False),
     sa.Column('id_front', sa.String(length=255), nullable=False),
     sa.Column('id_back', sa.String(length=255), nullable=False),
     sa.Column('area_code', sa.Integer(), nullable=False),
     sa.Column('invitation_code', sa.String(length=255), nullable=True),
-    sa.Column('admin_type', sa.Enum('super-admin', 'admin'), nullable=False),
+    sa.Column('admin_type', sa.Enum('super-admin', 'admin', name='admin_type_enum'), nullable=False),
     sa.ForeignKeyConstraint(['area_code'], ['area.code'], ),
     sa.PrimaryKeyConstraint('admin_id'),
     sa.UniqueConstraint('invitation_code'),
@@ -49,25 +61,25 @@ def upgrade() -> None:
     )
     op.create_table('house',
     sa.Column('house_id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('category', sa.Enum('sell', 'rent'), nullable=False),
+    sa.Column('category', sa.Enum('sell', 'rent', name='category_enum'), nullable=False),
     sa.Column('location', sa.String(length=255), nullable=False),
     sa.Column('address', sa.String(length=255), nullable=False),
     sa.Column('size', sa.Integer(), nullable=False),
-    sa.Column('condition', sa.Enum('fairly used', 'newly built', 'old and renovated'), nullable=True),
+    sa.Column('condition', sa.Enum('fairly used', 'newly built', 'old and renovated', name='condition_enum'), nullable=True),
     sa.Column('bedroom', sa.Integer(), nullable=False),
     sa.Column('toilets', sa.Integer(), nullable=False),
-    sa.Column('listed_by', sa.Enum('agent', 'owner'), nullable=True),
-    sa.Column('property_type', sa.Enum('apartment', 'condominium'), nullable=False),
-    sa.Column('furnish_status', sa.Enum('furnished', 'semi furnished', 'unfurnished'), nullable=False),
+    sa.Column('listed_by', sa.Enum('agent', 'owner', name='listed_by_enum'), server_default='owner', nullable=True),
+    sa.Column('property_type', sa.Enum('apartment', 'condominium', name='property_type_enum'), nullable=False),
+    sa.Column('furnish_status', sa.Enum('furnished', 'semi furnished', 'unfurnished', name='furnish_status_enum'), nullable=False),
     sa.Column('bathroom', sa.Integer(), nullable=False),
-    sa.Column('facility', sa.String(length=255), nullable=True),
+    sa.Column('facility', sa.Text(), nullable=True),
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('price', sa.Numeric(precision=10, scale=2), nullable=False),
-    sa.Column('negotiability', sa.Enum('open to n', 'not'), nullable=False),
+    sa.Column('negotiability', sa.Enum('open to negotiation', 'not', name='negotiability_enum'), nullable=False),
     sa.Column('parking_space', sa.Boolean(), nullable=False),
     sa.Column('assigned_for', sa.Integer(), nullable=False),
     sa.Column('owner', sa.Integer(), nullable=False),
-    sa.Column('status', sa.Enum('pending', 'available', 'rented', 'sold'), nullable=False),
+    sa.Column('status', sa.Enum('pending', 'available', 'rented', 'sold', name='status_enum'), nullable=False),
     sa.Column('photo', sa.Text(), nullable=True),
     sa.Column('video', sa.String(length=255), nullable=True),
     sa.Column('posted_by', sa.Integer(), nullable=True),
@@ -81,7 +93,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('admin_id', sa.Integer(), nullable=False),
     sa.Column('request_date', sa.DateTime(), nullable=True),
-    sa.Column('status', sa.Enum('seen', 'not seen'), nullable=False),
+    sa.Column('status', sa.Enum('seen', 'not seen', name='invitation_status_enum'), nullable=False),
     sa.Column('visited_date', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['admin_id'], ['admin.admin_id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.user_id'], ),
@@ -101,47 +113,24 @@ def upgrade() -> None:
     sa.Column('admin_id', sa.Integer(), nullable=False),
     sa.Column('house_id', sa.Integer(), nullable=False),
     sa.Column('price', sa.Numeric(precision=10, scale=2), nullable=False),
-    sa.Column('type', sa.Enum('rent', 'sell'), nullable=False),
+    sa.Column('type', sa.Enum('rent', 'sell', name='report_type_enum'), nullable=False),
     sa.Column('commission', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('transaction_photo', sa.String(length=255), nullable=False),
     sa.ForeignKeyConstraint(['admin_id'], ['admin.admin_id'], ),
     sa.ForeignKeyConstraint(['house_id'], ['house.house_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.add_column('user', sa.Column('invited_by', sa.String(length=255), nullable=True))
-    op.alter_column('user', 'phone_no',
-               existing_type=mysql.VARCHAR(length=20),
-               type_=sa.Integer(),
-               existing_nullable=False)
-    op.alter_column('user', 'invitation_code',
-               existing_type=mysql.VARCHAR(length=50),
-               type_=sa.String(length=255),
-               existing_nullable=True)
-    op.drop_index('ix_user_user_id', table_name='user')
-    op.create_unique_constraint(None, 'user', ['invitation_code'])
-    op.drop_column('user', 'invited_bye')
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('user', sa.Column('invited_bye', mysql.VARCHAR(length=50), nullable=True))
-    op.drop_constraint(None, 'user', type_='unique')
-    op.create_index('ix_user_user_id', 'user', ['user_id'], unique=False)
-    op.alter_column('user', 'invitation_code',
-               existing_type=sa.String(length=255),
-               type_=mysql.VARCHAR(length=50),
-               existing_nullable=True)
-    op.alter_column('user', 'phone_no',
-               existing_type=sa.Integer(),
-               type_=mysql.VARCHAR(length=20),
-               existing_nullable=False)
-    op.drop_column('user', 'invited_by')
     op.drop_table('success_report')
     op.drop_table('failure_report')
     op.drop_table('invitation')
     op.drop_table('house')
     op.drop_table('admin')
+    op.drop_table('user')
     op.drop_table('broker')
     op.drop_table('area')
     # ### end Alembic commands ###
