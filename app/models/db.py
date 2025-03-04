@@ -9,7 +9,7 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    phone_no = Column(String(20), nullable=False, unique=True)  # Changed to String
+    phone_no = Column(String(20), nullable=False, unique=True)  
     password = Column(String(255), nullable=False)
     invitation_code = Column(String(255), unique=True)
     invited_by = Column(Integer, ForeignKey('user.user_id'), nullable=True)
@@ -25,14 +25,11 @@ class Admin(Base):
 
     admin_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    phone_no = Column(String(20), nullable=False, unique=True)  # Changed to String
+    phone_no = Column(String(20), nullable=False, unique=True)  
     id_front = Column(String(255), nullable=False)
     id_back = Column(String(255), nullable=False)
-    area_code = Column(Integer, ForeignKey('area.code'), nullable=False)
     invitation_code = Column(String(255), unique=True)
     admin_type = Column(Enum('super-admin', 'admin', name="admin_type_enum"), nullable=False)
-
-    area = relationship("Area", back_populates="admins")
     houses = relationship("House", back_populates="assigned_admin")
     success_reports = relationship("SuccessReport", back_populates="admin")
     failure_reports = relationship("FailureReport", back_populates="admin")
@@ -45,7 +42,6 @@ class Area(Base):
     code = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
 
-    admins = relationship("Admin", back_populates="area")
 
 # House Table
 class House(Base):
@@ -63,10 +59,10 @@ class House(Base):
     property_type = Column(Enum('apartment', 'condominium', name="property_type_enum"), nullable=False)
     furnish_status = Column(Enum('furnished', 'semi furnished', 'unfurnished', name="furnish_status_enum"), nullable=False)
     bathroom = Column(Integer, nullable=False)
-    facility = Column(Text, nullable=True)  # Changed from String(255) to Text
+    facility = Column(Text, nullable=True)  
     description = Column(Text, nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
-    negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)  # Fixed typo
+    negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)  
     parking_space = Column(Boolean, nullable=False, default=False)
     assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
     owner = Column(Integer, ForeignKey('user.user_id'), nullable=False)
@@ -87,8 +83,7 @@ class Broker(Base):
 
     broker_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    phone_number = Column(String(20), nullable=False, unique=True)  # Changed to String
-    
+    phone_number = Column(String(20), nullable=False, unique=True)  
     houses = relationship("House", back_populates="broker")
 
 # Success Report Table
@@ -131,3 +126,13 @@ class Invitation(Base):
 
     invited_user = relationship("User", back_populates="invitations")
     inviting_admin = relationship("Admin", back_populates="invitations")
+
+# Admin Location Table
+class AdminLocation(Base):
+    __tablename__ = 'admin_location'  # Fixed table name format
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
+    area_code = Column(Integer, ForeignKey('area.code'), nullable=False)
+
+   

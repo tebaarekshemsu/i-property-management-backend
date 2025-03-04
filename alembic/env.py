@@ -21,7 +21,7 @@ if config.config_file_name is not None:
 
 # Import your models here
 from app.database import Base
-from app.models import User, Admin, Area, House, Broker, SuccessReport, FailureReport, Invitation  # Add other models as required
+from app.models import User, Admin, Area, House, Broker, SuccessReport, FailureReport, Invitation ,AdminLocation # Add other models as required
 
 # Set target metadata
 target_metadata = Base.metadata
