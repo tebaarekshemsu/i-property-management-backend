@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, Numeric, Text, DateTime
+from sqlalchemy import ARRAY, TEXT, Column, Integer, String, ForeignKey, Enum, Boolean, Numeric, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -67,7 +67,7 @@ class House(Base):
     assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
     owner = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     status = Column(Enum('pending', 'available', 'rented', 'sold', name="status_enum"), nullable=False, default='pending')
-    photo = Column(Text, nullable=True)
+    image_urls = Column(ARRAY(Text), nullable=True)
     video = Column(String(255), nullable=True)
     posted_by = Column(Integer, ForeignKey('broker.broker_id'), nullable=True)
 
@@ -76,6 +76,20 @@ class House(Base):
     broker = relationship("Broker", back_populates="houses")
     success_reports = relationship("SuccessReport", back_populates="house")
     failure_reports = relationship("FailureReport", back_populates="house")
+    vip_status = relationship("VIPStatus", uselist=False, back_populates="house", cascade="all, delete")
+
+
+    
+class VIPStatus(Base):
+    __tablename__ = 'vip_status'
+
+    vip_id = Column(Integer, primary_key=True, autoincrement=True)
+    house_id = Column(Integer, ForeignKey('house.house_id', ondelete="CASCADE"), nullable=False, unique=True)
+    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    duration = Column(Integer, nullable=False)  # Duration in days
+    price = Column(Numeric(10, 2), nullable=False)
+
+    house = relationship("House", back_populates="vip_status")
 
 # Broker Table
 class Broker(Base):
@@ -133,6 +147,6 @@ class AdminLocation(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    area_code = Column(Integer, ForeignKey('area.code'), nullable=False)
+    area_code = Column(Integer, ForeignKey('area.code'), nullable=False ,default=0000)
 
    

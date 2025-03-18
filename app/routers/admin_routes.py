@@ -8,6 +8,10 @@ router = APIRouter(prefix='/admin', tags=['Admin'])
 def login(request):
     return 'login'
 
+@router.post('loginnn')
+def loginnn(request):
+    return 'loginnn'
+
 @router.get('/dashboard')
 def dashboard():
     return 'dashboard'
