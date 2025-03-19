@@ -38,16 +38,7 @@ def posttt():
 def house_list():
     return featured_houses.get_featured_houses()
 
-@router.get('/detail/{house_id}')
-def detail(house_id: int, db: Session = Depends(SessionLocal)):
-    try:
-        return house_service.get_house_detail(db, house_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get('/house/{house_id}')
+def detaill(house_id: int):
+    return house_detail.get_house_detail(house_id)
 
-@router.get("/houses/{house_id}")
-def get_house_by_id(house_id: int, db: Session = Depends(SessionLocal)):
-    try:
-        return house_service.get_house_detail(db, house_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

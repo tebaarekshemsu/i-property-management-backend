@@ -4,6 +4,7 @@ from app.database import SessionLocal
 from app.models import House
 
 def get_house_detail(house_id):
+    print("get touch")
     print(house_id)
     db: Session = SessionLocal()
     try:
