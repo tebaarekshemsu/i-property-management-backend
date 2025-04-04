@@ -3,7 +3,6 @@ from app.database import SessionLocal
 from sqlalchemy import or_, and_
 from app.models import House
 
-# Helper function to convert a House object to dictionary (if not already present in the model)
 def house_as_dict(house):
     return {
         "house_id": house.house_id,
@@ -31,26 +30,28 @@ def house_as_dict(house):
         "posted_by": house.posted_by
     }
 
-def get_house_list(page: int, page_size: int, min_price: float, max_price: float, house_type: str, furnishing_status: str, bedrooms: int, bathrooms: int, location: str):
-    print('Fetching house list...') 
+def get_house_list(page: int, page_size: int, min_price: float = None, max_price: float = None, house_type: str = None, furnishing_status: str = None, bedrooms: int = None, bathrooms: int = None, location: str = None, category: str = None):
+    print('Fetching house list...')
     with SessionLocal() as db:
         query = db.query(House)
 
-        if min_price:
+        if category:
+            query = query.filter(House.category == category)
+        if min_price is not None:
             query = query.filter(House.price >= min_price)
-        if max_price:
+        if max_price is not None:
             query = query.filter(House.price <= max_price)
         if house_type:
-            query = query.filter(House.category == house_type)  # Ensure house_type is used correctly
+            query = query.filter(House.property_type == house_type)
         if furnishing_status:
-            query = query.filter(House.furnish_status == furnishing_status)  # Fixed the condition filter
-        if bedrooms:
+            query = query.filter(House.furnish_status == furnishing_status)
+        if bedrooms is not None:
             query = query.filter(House.bedroom == bedrooms)
-        if bathrooms:
+        if bathrooms is not None:
             query = query.filter(House.bathroom == bathrooms)
         if location:
             query = query.filter(House.location.ilike(f"%{location}%"))
-        
+
         total_count = query.count()
         houses = query.offset((page - 1) * page_size).limit(page_size).all()
 
