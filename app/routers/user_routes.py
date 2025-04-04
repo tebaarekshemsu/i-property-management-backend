@@ -31,8 +31,16 @@ def visit_request(visit_data: dict):
     return visit_request.save_visit_request(visit_data)
 
 @router.post('/house-post')
-def posttt():
-    return 'posting'
+def posttt(house_data: dict):
+    try:
+        with SessionLocal() as db:
+            new_house = House(**house_data)
+            db.add(new_house)
+            db.commit()
+            db.refresh(new_house)
+            return house_as_dict(new_house)
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get('/vip-houses')
 def house_list():
