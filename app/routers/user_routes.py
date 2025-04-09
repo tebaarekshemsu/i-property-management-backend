@@ -2,8 +2,33 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
+from sqlalchemy.orm import Session
+from app.schemas.schemas import UserCreate
+from app.models import User
+from app.auth.auth_handler import get_password_hash
+from app.database import get_db
 
-router = APIRouter(prefix='/user', tags=['User'])
+router = APIRouter(prefix="/user", tags=["User"])
+
+@router.post("/signup")
+def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.phone_no == user_data.phone_no).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Phone number already exists")
+
+    hashed_password = get_password_hash(user_data.password)
+    new_user = User(
+        name=user_data.name,
+        phone_no=user_data.phone_no,
+        password=hashed_password,
+        invitation_code=user_data.invitation_code,
+        invited_by=user_data.invited_by
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"msg": "User signed up successfully"}
+
 
 @router.get('/')
 def index():
