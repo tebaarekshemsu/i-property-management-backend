@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request
+from typing import List, Optional
+from fastapi import APIRouter, Depends, File, HTTPException, Query,Form, UploadFile 
+from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request,house_post ,location
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 
@@ -30,9 +31,56 @@ def get_houses(
 def visit_requestt(visit_data: dict):
     return visit_request.save_visit_request(visit_data)
 
-@router.post('/house-post')
-def posttt():
-    return 'posting'
+@router.post("/house-post")
+async def post_house(
+    category: str = Form(...),
+    location: str = Form(...),
+    address: str = Form(...),
+    size: float = Form(...),
+    condition: str = Form(...),
+    bedrooms: int = Form(...),
+    toilets: int = Form(...),
+    bathrooms: int = Form(...),
+    propertyType: str = Form(...),
+    furnishStatus: str = Form(...),
+    facilities: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    negotiability: str = Form(...),
+    parkingSpace: bool = Form(...),
+    listedBy: str = Form(...),
+    name: str = Form(...),
+    phoneNumber: str = Form(...),
+    videoLink: Optional[str] = Form(None),
+    photos: List[UploadFile] = File(...)
+):
+    return house_post.create_house_posting(
+        category=category,
+        location=location,
+        address=address,
+        size=size,
+        condition=condition,
+        bedrooms=bedrooms,
+        toilets=toilets,
+        bathrooms=bathrooms,
+        propertyType=propertyType,
+        furnishStatus=furnishStatus,
+        facilities=facilities,
+        description=description,
+        price=price,
+        negotiability=negotiability,
+        parkingSpace=parkingSpace,
+        listedBy=listedBy,
+        name=name,
+        phoneNumber=phoneNumber,
+        videoLink=videoLink,
+        photos=photos
+    )
+
+@router.get("/locations")
+def get_locations():
+    return location.get_all_locations()
+
 
 @router.get('/vip-houses')
 def house_list():
