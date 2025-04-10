@@ -71,7 +71,7 @@ class House(Base):
     negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)
     parking_space = Column(Boolean, nullable=False, default=False)
     assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    owner = Column(Integer, ForeignKey('users.id'), nullable=False)
     status = Column(Enum('pending', 'available', 'rented', 'sold', name="status_enum"), nullable=False, default='pending')
     image_urls = Column(ARRAY(Text), nullable=True)
     video = Column(String(255), nullable=True)

@@ -28,7 +28,7 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"msg": "User signed up successfully"}
+    return {"status":"ok","msg": "User signed up successfully"}
 
 
 @router.get('/')
