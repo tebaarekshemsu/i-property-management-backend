@@ -10,8 +10,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # OAuth2PasswordRequestForm only accepts 'username', so we treat it as 'phone_no'
-    phone_no = form_data.username
+    # OAuth2PasswordRequestForm only accepts 'username', so treat 'username' as 'phone_no'
+    phone_no = form_data.username  # ✅ This is the actual field sent in the form
     password = form_data.password
 
     user = db.query(User).filter(User.phone_no == phone_no).first()
@@ -21,6 +21,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         user_id = user.id
     else:
         user = db.query(Admin).filter(Admin.phone_no == phone_no).first()
+        print(user)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         role = user.admin_type

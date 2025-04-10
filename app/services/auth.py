@@ -13,13 +13,14 @@ def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
 def register_user(user_data, db: Session):
+    print(user_data)
     if db.query(User).filter(User.phone_no == user_data.phone_no).first():
         raise HTTPException(status_code=400, detail="Phone number already registered.")
     user = User(
         name=user_data.name,
         phone_no=user_data.phone_no,
         password=hash_password(user_data.password),
-        invitation_code=user_data.invitation_code
+        invitation_code=user_data.invitation_code or "123456",
     )
     db.add(user)
     db.commit()
