@@ -176,4 +176,4 @@ def create_house_posting(
         "success": True,
         "message": "House posted successfully.",
         "house_id": house.house_id,
-    
+     }
