@@ -18,7 +18,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     role = "user"
 
     if user:
-        user_id = user.id
+        user_id = user.user_id
     else:
         user = db.query(Admin).filter(Admin.phone_no == phone_no).first()
         print(user)
