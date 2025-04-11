@@ -1,13 +1,23 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query,Form, UploadFile 
-from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request,house_post ,location
+from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request,house_post ,location,user_service
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
 from app.schemas.schemas import UserCreate
+
 from app.models import User
 from app.auth.auth_handler import get_password_hash
 from app.database import get_db
+
+
+
+def to_dict(obj):
+    """Convert a SQLAlchemy model instance into a dictionary."""
+    if obj is None:
+        return None
+    return {column.key: getattr(obj, column.key) for column in obj.__table__.columns}
+
 
 router = APIRouter(prefix="/user", tags=["User"])
 
@@ -120,3 +130,22 @@ def search_admins_by_area_name(
     area_name: str = Query(..., description="Area name to search for"),
 ):
     return admin_contact.search_admins_by_area_name(area_name)
+
+
+@router.get("/profile")
+def get_user_profile(current_user: User = Depends(user_service.get_current_user), db: Session = Depends(get_db)):
+    try:
+        user = user_service.get_user_service(current_user.id, db)
+        return to_dict(user) 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.put("/profile")
+def update_user_profile(
+    user_data: dict, current_user: User = Depends(user_service.get_current_user)
+):
+    try:
+        updated_user = user_service.update_user_service(current_user.id, user_data)
+        return to_dict(updated_user)  
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
