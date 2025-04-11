@@ -19,7 +19,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         user_id = int(payload.get("sub"))
 
         if user_type == "user":
-            user = db.query(User).filter(User.id == user_id).first()
+            user = db.query(User).filter(User.user_id == user_id).first()
         elif user_type in ("admin", "super-admin"):
             user = db.query(Admin).filter(Admin.admin_id == user_id).first()
         else:
