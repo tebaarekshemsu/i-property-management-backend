@@ -23,7 +23,7 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         phone_no=user_data.phone_no,
         password=hashed_password,
         invitation_code=user_data.invitation_code,
-        invited_by=user_data.invited_by
+        invited_by=user_data.invited_by if user_data.invited_by else None
     )
     db.add(new_user)
     db.commit()

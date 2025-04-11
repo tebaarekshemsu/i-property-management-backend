@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Enum, Boolean, Numeric, Text, DateTime, ARRAY
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from sqlalchemy.orm import declarative_base
+from datetime import datetime, timezone
 
 Base = declarative_base()
 
@@ -12,14 +12,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # User Table
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     phone_no = Column(String, unique=True, index=True)
     password = Column(String, nullable=False)
     invitation_code = Column(String, unique=True)
-    invited_by = Column(Integer, nullable=True)
+    invited_by = Column(String, nullable=True)
 
     houses = relationship("House", back_populates="owner_user")
     invitations = relationship("Invitation", back_populates="invited_user")
@@ -71,7 +71,7 @@ class House(Base):
     negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)
     parking_space = Column(Boolean, nullable=False, default=False)
     assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    owner = Column(Integer, ForeignKey('users.id'), nullable=False)
+    owner = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     status = Column(Enum('pending', 'available', 'rented', 'sold', name="status_enum"), nullable=False, default='pending')
     image_urls = Column(ARRAY(Text), nullable=True)
     video = Column(String(255), nullable=True)
@@ -90,7 +90,7 @@ class VIPStatus(Base):
 
     vip_id = Column(Integer, primary_key=True, autoincrement=True)
     house_id = Column(Integer, ForeignKey('house.house_id', ondelete="CASCADE"), nullable=False, unique=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     duration = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
 
@@ -138,9 +138,9 @@ class Invitation(Base):
     __tablename__ = 'invitation'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    request_date = Column(DateTime, default=datetime.utcnow)
+    request_date = Column(DateTime, default=datetime.now(timezone.utc))
     status = Column(Enum('seen', 'not seen', name="invitation_status_enum"), nullable=False, default='not seen')
     visited_date = Column(DateTime, nullable=True)
 

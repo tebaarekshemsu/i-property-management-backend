@@ -13,7 +13,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid credentials",
     )
-    try:
+    try:    
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_type = payload.get("role")
         user_id = int(payload.get("sub"))
