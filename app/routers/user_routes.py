@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, File, HTTPException, Query,Form, UploadFile 
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query,Form, UploadFile 
 from app.services.user import featured_houses, house_detail, house_service ,admin_contact,visit_request,house_post ,location,user_service
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
@@ -133,19 +133,21 @@ def search_admins_by_area_name(
 
 
 @router.get("/profile")
-def get_user_profile(current_user: User = Depends(user_service.get_current_user), db: Session = Depends(get_db)):
+def get_user_profile(current_user: User = Depends(user_service.get_current_user)):
     try:
-        user = user_service.get_user_service(current_user.id, db)
+        user = user_service.get_user_service(current_user.user_id)
         return to_dict(user) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.put("/profile")
 def update_user_profile(
-    user_data: dict, current_user: User = Depends(user_service.get_current_user)
-):
+    user_data: dict = Body(...),current_user: User = Depends(user_service.get_current_user)
+):  
+    print("Inside route",user_data) 
     try:
-        updated_user = user_service.update_user_service(current_user.id, user_data)
+       
+        updated_user = user_service.update_user_service(current_user.user_id, user_data)
         return to_dict(updated_user)  
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
