@@ -22,9 +22,10 @@ class User(Base):
     invited_by = Column(String, nullable=True)
 
     houses = relationship("House", back_populates="owner_user")
-    invitations = relationship("Invitation", back_populates="invited_user")
+    visit_requests = relationship("Invitation", back_populates="user", cascade="all, delete")
 
-# Admin Table
+
+#Admin Table
 class Admin(Base):
     __tablename__ = 'admin'
 
@@ -40,9 +41,11 @@ class Admin(Base):
     houses = relationship("House", back_populates="assigned_admin")
     success_reports = relationship("SuccessReport", back_populates="admin")
     failure_reports = relationship("FailureReport", back_populates="admin")
-    invitations = relationship("Invitation", back_populates="inviting_admin", cascade="all, delete")
+    visit_requests = relationship("Invitation", back_populates="admin", cascade="all, delete")
+ 
+ #Area Table
 
-# Area Table
+#Area Table
 class Area(Base):
     __tablename__ = 'area'
 
@@ -141,11 +144,12 @@ class Invitation(Base):
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
     request_date = Column(DateTime, default=datetime.now(timezone.utc))
-    status = Column(Enum('seen', 'not seen', name="invitation_status_enum"), nullable=False, default='not seen')
     visited_date = Column(DateTime, nullable=True)
 
-    invited_user = relationship("User", back_populates="invitations")
-    inviting_admin = relationship("Admin", back_populates="invitations")
+    status = Column(Enum('seen', 'not seen', name="visit_request_status_enum"), nullable=False, default='not seen')
+
+    user = relationship("User", back_populates="visit_requests")
+    admin = relationship("Admin", back_populates="visit_requests")
 
 # Admin Location Table
 class AdminLocation(Base):

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile # type: ignore
+from fastapi.security import OAuth2PasswordRequestForm # type: ignore
+from sqlalchemy.orm import Session # type: ignore
+from passlib.context import CryptContext # type: ignore
 from app.database import get_db
-from app.models import Admin, House, User
+from app.models import Admin, House, User , Invitation
 from datetime import timedelta
 from app.services.admin import get_dashboard_data
 from app.schemas.schemas import AdminCreate, HouseUpdate
@@ -210,3 +210,59 @@ async def admin_post_house(
             "status": house.status,
         },
     }
+
+@router.get("/visit-request")
+def get_visit_requests_for_admin(
+    db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)
+):
+    print(current_admin)
+    if not hasattr(current_admin, "admin_id"):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+
+    requests = (
+        db.query(Invitation)
+        .filter(Invitation.admin_id == current_admin.admin_id)
+        .order_by(Invitation.request_date.desc())
+        .all()
+    )
+
+    return {
+        "success": True,
+        "visit_requests": [
+            {
+                "id": r.id,
+                "user_id": r.user_id,
+                "status": r.status,
+                "created_at": r.request_date,
+                "visited_date": r.visited_date,
+            }
+            for r in requests
+        ]
+    }
+
+@router.put("/{request_id}/mark-seen")
+def mark_visit_request_as_seen(
+    request_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)
+):
+    if not hasattr(current_admin, "admin_id"):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+
+    visit_request = (
+        db.query(Invitation)
+        .filter(
+            Invitation.id == request_id,
+            Invitation.admin_id == current_admin.admin_id
+        )
+        .first()
+    )
+
+    if not visit_request:
+        raise HTTPException(status_code=404, detail="Visit request not found.")
+
+    if visit_request.status == "seen":
+        return {"success": False, "message": "Already marked as seen."}
+
+    visit_request.status = "seen"
+    db.commit()
+
+    return {"success": True, "message": "Visit request marked as seen."}
