@@ -37,13 +37,9 @@ class Admin(Base):
     invitation_code = Column(String(255), unique=True)
     admin_type = Column(Enum('super-admin', 'admin', name="admin_type_enum"), nullable=False)
     password = Column(String(255), nullable=False)
-
-    houses = relationship("House", back_populates="assigned_admin")
     success_reports = relationship("SuccessReport", back_populates="admin")
     failure_reports = relationship("FailureReport", back_populates="admin")
-    visit_requests = relationship("Invitation", back_populates="admin", cascade="all, delete")
- 
- #Area Table
+    
 
 #Area Table
 class Area(Base):
@@ -52,12 +48,15 @@ class Area(Base):
     code = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
 
+    houses = relationship("House", back_populates="area")
+
 # House Table
 class House(Base):
     __tablename__ = 'house'
 
     house_id = Column(Integer, primary_key=True, autoincrement=True)
     category = Column(Enum('sell', 'rent', name="category_enum"), nullable=False)
+    area_code = Column(Integer, ForeignKey('area.code'), nullable=False)
     location = Column(String(255), nullable=False)
     address = Column(String(255), nullable=False)
     size = Column(Integer, nullable=False)
@@ -73,19 +72,19 @@ class House(Base):
     price = Column(Numeric(10, 2), nullable=False)
     negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)
     parking_space = Column(Boolean, nullable=False, default=False)
-    assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    owner = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=True)
+    owner = Column(Integer, ForeignKey('user.user_id'), nullable=True)
     status = Column(Enum('pending', 'available', 'rented', 'sold', name="status_enum"), nullable=False, default='pending')
     image_urls = Column(ARRAY(Text), nullable=True)
     video = Column(String(255), nullable=True)
     posted_by = Column(Integer, ForeignKey('broker.broker_id'), nullable=True)
 
-    assigned_admin = relationship("Admin", back_populates="houses")
     owner_user = relationship("User", back_populates="houses")
     broker = relationship("Broker", back_populates="houses")
     success_reports = relationship("SuccessReport", back_populates="house")
     failure_reports = relationship("FailureReport", back_populates="house")
     vip_status = relationship("VIPStatus", uselist=False, back_populates="house", cascade="all, delete")
+    area = relationship("Area", back_populates="houses")
 
 # VIP Status Table
 class VIPStatus(Base):
@@ -142,14 +141,14 @@ class Invitation(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
-    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
+    house_id = Column(Integer, ForeignKey('house.house_id'), nullable=False)
     request_date = Column(DateTime, default=datetime.now(timezone.utc))
     visited_date = Column(DateTime, nullable=True)
 
     status = Column(Enum('seen', 'not seen', name="visit_request_status_enum"), nullable=False, default='not seen')
 
     user = relationship("User", back_populates="visit_requests")
-    admin = relationship("Admin", back_populates="visit_requests")
+  
 
 # Admin Location Table
 class AdminLocation(Base):

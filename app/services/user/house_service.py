@@ -66,4 +66,5 @@ def get_house_detail(db: Session, house_id: int):
     house = db.query(House).filter(House.house_id == house_id).first()
     if not house:
         return {"message": "House not found"}
+    print(house)
     return house_as_dict(house)
