@@ -80,6 +80,19 @@ def update_house(house_id: int, updated_data: HouseUpdate, db: Session = Depends
     db.refresh(house)
     return house
 
+@router.delete("/delete/{house_id}")
+def delete_house(house_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
+    house = db.query(House).filter(House.house_id == house_id).first()
+
+    if not house:
+        raise HTTPException(status_code=404, detail="House not found")
+    if house.assigned_for != current_admin.admin_id:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this house")
+
+    db.delete(house)
+    db.commit()
+    return {"detail": "House deleted successfully"}
+
 @router.post("/house-post")
 async def admin_post_house(
     category: str = Form(...),
