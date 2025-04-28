@@ -61,7 +61,7 @@ class House(Base):
 
     house_id = Column(Integer, primary_key=True, autoincrement=True)
     category = Column(Enum('sell', 'rent', name="category_enum"), nullable=False)
-    area_code = Column(Integer, ForeignKey('area.code'), nullable=False)
+    area_code = Column(Integer, ForeignKey('area.code', ondelete="CASCADE"), nullable=False)
     location = Column(String(255), nullable=False)
     address = Column(String(255), nullable=False)
     size = Column(Integer, nullable=False)
@@ -78,7 +78,7 @@ class House(Base):
     negotiability = Column(Enum('open to negotiation', 'not', name="negotiability_enum"), nullable=False)
     parking_space = Column(Boolean, nullable=False, default=False)
     assigned_for = Column(Integer, ForeignKey('admin.admin_id'), nullable=True)
-    owner = Column(Integer, ForeignKey('user.user_id'), nullable=True)
+    owner = Column(Integer, ForeignKey('user.user_id', ondelete="SET NULL"), nullable=True)
     status = Column(Enum('pending', 'available', 'rented', 'sold', name="status_enum"), nullable=False, default='pending')
     image_urls = Column(ARRAY(Text), nullable=True)
     video = Column(String(255), nullable=True)
@@ -134,7 +134,7 @@ class SuccessReport(Base):
     __tablename__ = 'success_report'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
+    admin_id = Column(Integer, ForeignKey('admin.admin_id', ondelete="CASCADE"), nullable=False)
     invitation_id = Column(Integer, ForeignKey('invitation.id'), nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
     type = Column(Enum('rent', 'sell', name="report_type_enum"), nullable=False)
