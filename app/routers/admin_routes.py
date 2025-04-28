@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm # type: ignore
 from sqlalchemy.orm import Session # type: ignore
 from passlib.context import CryptContext # type: ignore
 from app.database import get_db
-from app.models import Admin, House, User , Invitation
+from app.models import Admin, House, User, Invitation, FailureReport, SuccessReport
 from datetime import timedelta
 from app.services.admin import get_dashboard_data
 from app.schemas.schemas import AdminCreate, HouseUpdate
@@ -280,3 +280,71 @@ def mark_visit_request_as_seen(
     db.commit()
 
     return {"success": True, "message": "Visit request marked as seen."}
+
+@router.post("/success-report/{request_id}")
+def create_success_report(
+    request_id: int,
+    price: float = Form(...),
+    type: str = Form(...),
+    commission: float = Form(...),
+    transaction_photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_user)
+):
+    if not hasattr(current_admin, "admin_id"):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+
+    visit_request = db.query(Invitation).filter(Invitation.id == request_id).first()
+    if not visit_request:
+        raise HTTPException(status_code=404, detail="Visit request not found.")
+
+    if visit_request.status != "seen":
+        raise HTTPException(status_code=400, detail="Visit request must be marked as seen first.")
+
+    # Save the transaction photo
+    filename = f"{current_admin.name.replace(' ', '_')}_{transaction_photo.filename}"
+    file_path = os.path.join("media/transaction_photos", filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(transaction_photo.file, buffer)
+
+    success_report = SuccessReport(
+        admin_id=current_admin.admin_id,
+        invitation_id=request_id,
+        price=price,
+        type=type,
+        commission=commission,
+        transaction_photo=file_path
+    )
+
+    db.add(success_report)
+    db.commit()
+
+    return {"success": True, "message": "Success report created successfully."}
+
+@router.post("/failure-report/{request_id}")
+def create_failure_report(
+    request_id: int,
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_user)
+):
+    if not hasattr(current_admin, "admin_id"):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+
+    visit_request = db.query(Invitation).filter(Invitation.id == request_id).first()
+    if not visit_request:
+        raise HTTPException(status_code=404, detail="Visit request not found.")
+
+    if visit_request.status != "seen":
+        raise HTTPException(status_code=400, detail="Visit request must be marked as seen first.")
+
+    failure_report = FailureReport(
+        admin_id=current_admin.admin_id,
+        invitation_id=request_id,
+        reason=reason
+    )
+
+    db.add(failure_report)
+    db.commit()
+
+    return {"success": True, "message": "Failure report created successfully."}

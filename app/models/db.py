@@ -126,6 +126,8 @@ class Invitation(Base):
     status = Column(Enum('seen', 'not seen', name="visit_request_status_enum"), nullable=False, default='not seen')
 
     user = relationship("User", back_populates="visit_requests")
+    success_reports = relationship("SuccessReport", back_populates="invitation")
+    failure_reports = relationship("FailureReport", back_populates="invitation")
 
 # Success Report Table
 class SuccessReport(Base):
