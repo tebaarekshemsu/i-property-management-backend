@@ -232,9 +232,10 @@ def get_visit_requests_for_admin(
     if not hasattr(current_admin, "admin_id"):
         raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
 
+    house_ids = db.query(House.house_id).filter(House.assigned_for == current_admin.admin_id).subquery()
     requests = (
         db.query(Invitation)
-        .filter(Invitation.admin_id == current_admin.admin_id)
+        .filter(Invitation.house_id.in_(house_ids), Invitation.status == "not seen")
         .order_by(Invitation.request_date.desc())
         .all()
     )

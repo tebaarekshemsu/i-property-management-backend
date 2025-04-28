@@ -113,33 +113,6 @@ class Broker(Base):
 
     houses = relationship("House", back_populates="broker")
 
-# Success Report Table
-class SuccessReport(Base):
-    __tablename__ = 'success_report'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    house_id = Column(Integer, ForeignKey('house.house_id'), nullable=False)
-    price = Column(Numeric(10, 2), nullable=False)
-    type = Column(Enum('rent', 'sell', name="report_type_enum"), nullable=False)
-    commission = Column(Numeric(10, 2), nullable=False)
-    transaction_photo = Column(String(255), nullable=False)
-
-    admin = relationship("Admin", back_populates="success_reports")
-    house = relationship("House", back_populates="success_reports")
-
-# Failure Report Table
-class FailureReport(Base):
-    __tablename__ = 'failure_report'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
-    house_id = Column(Integer, ForeignKey('house.house_id'), nullable=False)
-    reason = Column(Text, nullable=False)
-
-    admin = relationship("Admin", back_populates="failure_reports")
-    house = relationship("House", back_populates="failure_reports")
-
 # Invitation Table
 class Invitation(Base):
     __tablename__ = 'invitation'
@@ -153,7 +126,33 @@ class Invitation(Base):
     status = Column(Enum('seen', 'not seen', name="visit_request_status_enum"), nullable=False, default='not seen')
 
     user = relationship("User", back_populates="visit_requests")
-  
+
+# Success Report Table
+class SuccessReport(Base):
+    __tablename__ = 'success_report'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
+    invitation_id = Column(Integer, ForeignKey('invitation.id'), nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
+    type = Column(Enum('rent', 'sell', name="report_type_enum"), nullable=False)
+    commission = Column(Numeric(10, 2), nullable=False)
+    transaction_photo = Column(String(255), nullable=False)
+
+    admin = relationship("Admin", back_populates="success_reports")
+    invitation = relationship("Invitation", back_populates="success_reports")
+
+# Failure Report Table
+class FailureReport(Base):
+    __tablename__ = 'failure_report'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('admin.admin_id'), nullable=False)
+    invitation_id = Column(Integer, ForeignKey('invitation.id'), nullable=False)
+    reason = Column(Text, nullable=False)
+
+    admin = relationship("Admin", back_populates="failure_reports")
+    invitation = relationship("Invitation", back_populates="failure_reports")
 
 # Admin Location Table
 class AdminLocation(Base):
