@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import os
 import json
 import shutil
-from app.models import House,Area
+from app.models import House, Area, User
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 

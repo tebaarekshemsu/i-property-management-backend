@@ -1,26 +1,41 @@
 from fastapi import APIRouter
-from app.services.super_admin import dashboard_service, admin_service,admin_update_service
+from app.services.super_admin import dashboard_service, admin_service, admin_update_service
 
 router = APIRouter(prefix='/super_admin', tags=['super_admin'])
 
 @router.get('/dashboard')
 def dashboard():
+    """
+    Get dashboard data for super admin.
+    """
     return dashboard_service.get_dashboard_data()
 
 @router.get('/dashboard/area')
 def get_all_area():
+    """
+    Get all areas.
+    """
     return dashboard_service.get_all_location()
 
 @router.get('/admins')
 def get_all_admins():
+    """
+    Get all admins.
+    """
     return admin_service.get_all_admins()
 
 @router.post('/admin')
 def add_admin(admin_data: dict):
+    """
+    Add a new admin.
+    """
     return admin_service.add_admin(admin_data)
 
 @router.post('/admin/area-delete')
 def delete_admin_location(admin_data: dict):
+    """
+    Delete an admin's location.
+    """
     admin_id = admin_data.get("admin_id")
     area_code = admin_data.get("area_code")
 
@@ -29,8 +44,10 @@ def delete_admin_location(admin_data: dict):
 
     return admin_update_service.delete_admin_location(admin_id, area_code)
 
-
 @router.delete('/admin/{admin_id}')
 def delete_admin(admin_id: int):
+    """
+    Delete an admin by ID.
+    """
     return admin_service.delete_admin(admin_id)
 

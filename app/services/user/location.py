@@ -1,13 +1,27 @@
+from sqlalchemy.orm import Session
+from app.models import Area
+from fastapi import HTTPException
 from app.database import SessionLocal
-from app.models import Area  # Import the Area model
+from sqlalchemy.exc import SQLAlchemyError
 
 def get_all_locations():
+    """
+    Get all available locations.
+    """
     db = SessionLocal()
     try:
-        # Query the distinct area_name using SQLAlchemy ORM
-        locations = db.query(Area.name).all()  # .all() returns a list of tuples
-        # Extract the area_name from the result tuples
-        location_list = [location[0] for location in locations]
-        return {"locations": location_list}
+        areas = db.query(Area).all()
+        return [{"code": area.code, "name": area.name} for area in areas]
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error occurred while fetching locations: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching locations: {str(e)}"
+        )
     finally:
         db.close()

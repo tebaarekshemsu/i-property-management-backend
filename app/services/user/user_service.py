@@ -1,34 +1,25 @@
-from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
 from app.models import User
-from app.database import SessionLocal
-from app.auth.dependencies import get_current_user as auth_get_current_user  # Import from auth/dependencies.py
+from app.auth.dependencies import get_current_user
+from fastapi import HTTPException
 
-def get_user_service(user_id: int):
-    db = SessionLocal()
-    user = db.query(User).filter(User.user_id == user_id).first()
-    print("herrrrrrrrr")
-    print(user.phone_no)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+def get_user_profile(current_user: User):
+    """
+    Get the current user's profile.
+    """
+    return {
+        "user_id": current_user.user_id,
+        "name": current_user.name,
+        "phone_no": current_user.phone_no,
+        "invitation_code": current_user.invitation_code,
+        "invited_by": current_user.invited_by
+    }
 
-
-def update_user_service(user_id: int, user_data: dict):
-    print('youuuuuuuuu')
-    db = SessionLocal()
-    
-    user = db.query(User).filter(User.user_id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
+def update_user_profile(user_data: dict, current_user: User):
+    """
+    Update the current user's profile.
+    """
     for key, value in user_data.items():
-        if hasattr(user, key):
-            setattr(user, key, value)
-
-    db.commit()
-    db.refresh(user)
-    return user
-
-# Use the centralized token extraction logic from auth/dependencies.py
-def get_current_user(user: User = Depends(auth_get_current_user)):
-    return user
+        if hasattr(current_user, key):
+            setattr(current_user, key, value)
+    return get_user_profile(current_user)

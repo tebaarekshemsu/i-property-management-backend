@@ -19,6 +19,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.post("/signup")
 def signup(admin_data: AdminCreate, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    """
+    Create a new admin. Only super-admins can create admins.
+    """
     if getattr(current, "admin_type", None) != "super-admin":
         raise HTTPException(status_code=403, detail="Only super-admins can create admins")
 
@@ -43,10 +46,16 @@ def signup(admin_data: AdminCreate, db: Session = Depends(get_db), current=Depen
 
 @router.get("/dashboard")
 def dashboard(current_admin: Admin = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get dashboard data for the current admin.
+    """
     return get_dashboard_data(current_admin.admin_id, db)
 
 @router.get("/houselist")
 def get_admin_houses(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
+    """
+    Get all houses assigned to the current admin.
+    """
     if not hasattr(current_admin, "admin_id"):
         raise HTTPException(status_code=403, detail="Not authorized as admin")
     houses = db.query(House).filter(House.assigned_for == current_admin.admin_id).all()
@@ -54,6 +63,9 @@ def get_admin_houses(db: Session = Depends(get_db), current_admin: Admin = Depen
 
 @router.delete("/delete/{house_id}")
 def delete_house(house_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
+    """
+    Delete a house by ID. Only the assigned admin can delete it.
+    """
     house = db.query(House).filter(House.house_id == house_id).first()
     if not house:
         raise HTTPException(status_code=404, detail="House not found")
@@ -66,8 +78,10 @@ def delete_house(house_id: int, db: Session = Depends(get_db), current_admin: Ad
 
 @router.put("/edit/{house_id}")
 def update_house(house_id: int, updated_data: HouseUpdate, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
+    """
+    Update a house by ID. Only the assigned admin can update it.
+    """
     house = db.query(House).filter(House.house_id == house_id).first()
-
     if not house:
         raise HTTPException(status_code=404, detail="House not found")
     if house.assigned_for != current_admin.admin_id:
@@ -79,19 +93,6 @@ def update_house(house_id: int, updated_data: HouseUpdate, db: Session = Depends
     db.commit()
     db.refresh(house)
     return house
-
-@router.delete("/delete/{house_id}")
-def delete_house(house_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
-    house = db.query(House).filter(House.house_id == house_id).first()
-
-    if not house:
-        raise HTTPException(status_code=404, detail="House not found")
-    if house.assigned_for != current_admin.admin_id:
-        raise HTTPException(status_code=403, detail="You do not have permission to delete this house")
-
-    db.delete(house)
-    db.commit()
-    return {"detail": "House deleted successfully"}
 
 @router.post("/house-post")
 async def admin_post_house(
@@ -118,9 +119,12 @@ async def admin_post_house(
     db: Session = Depends(get_db),
     current_user: Admin = Depends(get_current_user)
 ):
+    """
+    Post a new house. Validates input and saves images.
+    """
     if not hasattr(current_user, "admin_id"):
         raise HTTPException(status_code=403, detail="Not authorized as admin")
-    print(facilities)
+
     errors = {}
     if not category.strip():
         errors["category"] = "Category is required."
@@ -156,20 +160,19 @@ async def admin_post_house(
         errors["photos"] = "At least one photo is required."
 
     try:
-        facilities_list = []  # Initialize the list to avoid the UnboundLocalError
-
-        # Check if facilities look like a JSON array (starts with "[")
+        facilities_list = []
         if facilities.strip().startswith("["):
-            # If it looks like JSON, parse it as such
             facilities_list = json.loads(facilities)
         else:
-            # Fallback: treat as a comma-separated string
             facilities_list = [item.strip() for item in facilities.split(",") if item.strip()]
 
         if not isinstance(facilities_list, list):
             errors["facilities"] = "Facilities must be a list."
     except Exception:
         errors["facilities"] = "Invalid facilities format."
+
+    if errors:
+        raise HTTPException(status_code=400, detail=errors)
 
     image_paths = []
     os.makedirs("media/house_photos", exist_ok=True)
@@ -201,85 +204,45 @@ async def admin_post_house(
         negotiability=negotiability,
         parking_space=parkingSpace,
         listed_by=listedBy,
-        video=videoLink,
-        image_urls=image_paths,
-        owner=owner_user.user_id,
         assigned_for=current_user.admin_id,
-        status="pending",
+        owner=owner_user.user_id,
+        image_urls=image_paths,
+        video=videoLink
     )
-
     db.add(house)
     db.commit()
     db.refresh(house)
-
-    return {
-        "success": True,
-        "message": "House posted successfully.",
-        "data": {
-            "house_id": house.house_id,
-            "category": house.category,
-            "location": house.location,
-            "price": house.price,
-            "status": house.status,
-        },
-    }
+    return {"success": True, "message": "House posted successfully", "house": house}
 
 @router.get("/visit-request")
 def get_visit_requests_for_admin(
     db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)
 ):
-    print(current_admin)
+    """
+    Get all visit requests for the current admin.
+    """
     if not hasattr(current_admin, "admin_id"):
-        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
-
-    house_ids = db.query(House.house_id).filter(House.assigned_for == current_admin.admin_id).subquery()
-    requests = (
-        db.query(Invitation)
-        .filter(Invitation.house_id.in_(house_ids), Invitation.status == "not seen")
-        .order_by(Invitation.request_date.desc())
-        .all()
-    )
-
-    return {
-        "success": True,
-        "visit_requests": [
-            {
-                "id": r.id,
-                "user_id": r.user_id,
-                "status": r.status,
-                "created_at": r.request_date,
-                "visited_date": r.visited_date,
-            }
-            for r in requests
-        ]
-    }
+        raise HTTPException(status_code=403, detail="Not authorized as admin")
+    requests = db.query(Invitation).filter(Invitation.house_id.in_(
+        db.query(House.house_id).filter(House.assigned_for == current_admin.admin_id)
+    )).all()
+    return requests
 
 @router.put("/{request_id}/mark-seen")
 def mark_visit_request_as_seen(
     request_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)
 ):
+    """
+    Mark a visit request as seen.
+    """
     if not hasattr(current_admin, "admin_id"):
-        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
-
-    visit_request = (
-        db.query(Invitation)
-        .filter(
-            Invitation.id == request_id,
-            Invitation.admin_id == current_admin.admin_id
-        )
-        .first()
-    )
-
-    if not visit_request:
-        raise HTTPException(status_code=404, detail="Visit request not found.")
-
-    if visit_request.status == "seen":
-        return {"success": False, "message": "Already marked as seen."}
-
-    visit_request.status = "seen"
+        raise HTTPException(status_code=403, detail="Not authorized as admin")
+    request = db.query(Invitation).filter(Invitation.id == request_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Visit request not found")
+    request.status = "seen"
     db.commit()
-
-    return {"success": True, "message": "Visit request marked as seen."}
+    return {"detail": "Visit request marked as seen"}
 
 @router.post("/success-report/{request_id}")
 def create_success_report(
@@ -291,23 +254,22 @@ def create_success_report(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_user)
 ):
+    """
+    Create a success report for a visit request.
+    """
     if not hasattr(current_admin, "admin_id"):
-        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+        raise HTTPException(status_code=403, detail="Not authorized as admin")
+    request = db.query(Invitation).filter(Invitation.id == request_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Visit request not found")
 
-    visit_request = db.query(Invitation).filter(Invitation.id == request_id).first()
-    if not visit_request:
-        raise HTTPException(status_code=404, detail="Visit request not found.")
-
-    if visit_request.status != "seen":
-        raise HTTPException(status_code=400, detail="Visit request must be marked as seen first.")
-
-    # Save the transaction photo
-    filename = f"{current_admin.name.replace(' ', '_')}_{transaction_photo.filename}"
+    filename = f"success_report_{request_id}_{transaction_photo.filename}"
     file_path = os.path.join("media/transaction_photos", filename)
+    os.makedirs("media/transaction_photos", exist_ok=True)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(transaction_photo.file, buffer)
 
-    success_report = SuccessReport(
+    report = SuccessReport(
         admin_id=current_admin.admin_id,
         invitation_id=request_id,
         price=price,
@@ -315,11 +277,9 @@ def create_success_report(
         commission=commission,
         transaction_photo=file_path
     )
-
-    db.add(success_report)
+    db.add(report)
     db.commit()
-
-    return {"success": True, "message": "Success report created successfully."}
+    return {"detail": "Success report created"}
 
 @router.post("/failure-report/{request_id}")
 def create_failure_report(
@@ -328,23 +288,20 @@ def create_failure_report(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_user)
 ):
+    """
+    Create a failure report for a visit request.
+    """
     if not hasattr(current_admin, "admin_id"):
-        raise HTTPException(status_code=403, detail="Access forbidden: Admins only")
+        raise HTTPException(status_code=403, detail="Not authorized as admin")
+    request = db.query(Invitation).filter(Invitation.id == request_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Visit request not found")
 
-    visit_request = db.query(Invitation).filter(Invitation.id == request_id).first()
-    if not visit_request:
-        raise HTTPException(status_code=404, detail="Visit request not found.")
-
-    if visit_request.status != "seen":
-        raise HTTPException(status_code=400, detail="Visit request must be marked as seen first.")
-
-    failure_report = FailureReport(
+    report = FailureReport(
         admin_id=current_admin.admin_id,
         invitation_id=request_id,
         reason=reason
     )
-
-    db.add(failure_report)
+    db.add(report)
     db.commit()
-
-    return {"success": True, "message": "Failure report created successfully."}
+    return {"detail": "Failure report created"}

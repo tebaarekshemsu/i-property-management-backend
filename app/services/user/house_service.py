@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from sqlalchemy import or_, and_
 from app.models import House
+from fastapi import HTTPException
+from typing import Optional
 
 def house_as_dict(house):
     return {
@@ -30,13 +32,25 @@ def house_as_dict(house):
         "posted_by": house.posted_by
     }
 
-def get_house_list(page: int, page_size: int, min_price: float = None, max_price: float = None, house_type: str = None, furnishing_status: str = None, bedrooms: int = None, bathrooms: int = None, location: str = None, category: str = None):
-    print('Fetching house list...')
-    with SessionLocal() as db:
+def get_house_list(
+    page: int = 1,
+    page_size: int = 10,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    house_type: Optional[str] = None,
+    furnishing_status: Optional[str] = None,
+    bedrooms: Optional[int] = None,
+    bathrooms: Optional[int] = None,
+    location: Optional[str] = None,
+    category: str = "",
+):
+    """
+    Get a list of houses with optional filtering.
+    """
+    db = SessionLocal()
+    try:
         query = db.query(House)
 
-        if category:
-            query = query.filter(House.category == category)
         if min_price is not None:
             query = query.filter(House.price >= min_price)
         if max_price is not None:
@@ -50,21 +64,17 @@ def get_house_list(page: int, page_size: int, min_price: float = None, max_price
         if bathrooms is not None:
             query = query.filter(House.bathroom == bathrooms)
         if location:
-            query = query.filter(House.location.ilike(f"%{location}%"))
+            query = query.filter(House.location == location)
+        if category:
+            query = query.filter(House.category == category)
 
-        total_count = query.count()
         houses = query.offset((page - 1) * page_size).limit(page_size).all()
-
-    return {
-        "total_count": total_count,
-        "page": page,
-        "page_size": page_size,
-        "houses": [house_as_dict(house) for house in houses]
-    }
+        return [house_as_dict(house) for house in houses]
+    finally:
+        db.close()
 
 def get_house_detail(db: Session, house_id: int):
     house = db.query(House).filter(House.house_id == house_id).first()
     if not house:
         return {"message": "House not found"}
-    print(house)
     return house_as_dict(house)

@@ -10,8 +10,10 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # OAuth2PasswordRequestForm only accepts 'username', so treat 'username' as 'phone_no'
-    phone_no = form_data.username  # ✅ This is the actual field sent in the form
+    """
+    Authenticate a user or admin and return a JWT token.
+    """
+    phone_no = form_data.username  # OAuth2PasswordRequestForm only accepts 'username', so treat 'username' as 'phone_no'
     password = form_data.password
 
     user = db.query(User).filter(User.phone_no == phone_no).first()

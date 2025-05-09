@@ -1,36 +1,60 @@
+from sqlalchemy.orm import Session
 from app.models import House, VIPStatus
-from sqlalchemy.orm import joinedload
-from sqlalchemy import desc
-from app.database import SessionLocal
 from fastapi import HTTPException
+from app.database import SessionLocal
+from sqlalchemy.exc import SQLAlchemyError
 
 def get_featured_houses():
+    """
+    Get a list of VIP houses.
+    """
     db = SessionLocal()
     try:
-        vip_houses = (
-            db.query(House)
-            .join(VIPStatus, House.house_id == VIPStatus.house_id)  # Join on the house_id field
-            .options(joinedload(House.vip_status))  # Load VIP status data
-            .order_by(desc(VIPStatus.created_date))  # Order by newest VIP status
-            .limit(5)  # Get only the top 5
-            .all()
-        )
-
-        if not vip_houses:
-            raise HTTPException(status_code=404, detail="No featured houses found.")
-
-        # Serialize the results
-        featured_houses = [
+        # Query houses that have VIP status
+        houses = db.query(House).join(VIPStatus).all()
+        
+        if not houses:
+            return []  # Return empty list if no VIP houses found
+            
+        return [
             {
-                "id": house.house_id,
-                "price": house.price,
+                "house_id": house.house_id,
+                "category": house.category,
+                "location": house.location,
+                "address": house.address,
+                "size": house.size,
+                "condition": house.condition,
+                "bedroom": house.bedroom,
+                "toilets": house.toilets,
+                "bathroom": house.bathroom,
+                "property_type": house.property_type,
+                "furnish_status": house.furnish_status,
+                "facility": house.facility,
                 "description": house.description,
-                "imageUrl": house.image_urls[0] if house.image_urls else None  # Get the first image from the array
+                "price": float(house.price),  # Convert Decimal to float
+                "negotiability": house.negotiability,
+                "parking_space": house.parking_space,
+                "listed_by": house.listed_by,
+                "status": house.status,
+                "image_urls": house.image_urls,
+                "video": house.video,
+                "vip_status": {
+                    "duration": house.vip_status.duration,
+                    "price": float(house.vip_status.price)  # Convert Decimal to float
+                }
             }
-            for house in vip_houses
+            for house in houses
         ]
-
-        return {"featured_houses": featured_houses}
-
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error occurred while fetching featured houses: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching featured houses: {str(e)}"
+        )
     finally:
         db.close()

@@ -86,8 +86,6 @@ class House(Base):
 
     owner_user = relationship("User", back_populates="houses")
     broker = relationship("Broker", back_populates="houses")
-    success_reports = relationship("SuccessReport", back_populates="house")
-    failure_reports = relationship("FailureReport", back_populates="house")
     vip_status = relationship("VIPStatus", uselist=False, back_populates="house", cascade="all, delete")
     area = relationship("Area", back_populates="houses")
 
