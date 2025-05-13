@@ -57,5 +57,8 @@ class HouseUpdate(BaseModel):
     listed_by: Optional[str] = None
     video: Optional[str] = None
 
+class AreaCreate(BaseModel):
+    name: str
+
 class Config:
     orm_mode = True
