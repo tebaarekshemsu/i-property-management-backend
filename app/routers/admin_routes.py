@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile # type: ignore
+from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile, Query # type: ignore
 from fastapi.security import OAuth2PasswordRequestForm # type: ignore
 from sqlalchemy.orm import Session # type: ignore
 from passlib.context import CryptContext # type: ignore
 from app.database import get_db
-from app.models import Admin, House, User, Invitation, FailureReport, SuccessReport
+from app.models import Admin, House, User, Invitation, FailureReport, SuccessReport, Area
 from datetime import timedelta
 from app.services.admin import get_dashboard_data
-from app.schemas.schemas import AdminCreate, HouseUpdate
+from app.schemas.schemas import AdminCreate, HouseUpdate, AreaCreate
 from app.auth.auth_handler import get_password_hash
 from app.auth.dependencies import get_current_user
 from typing import List, Optional
@@ -26,14 +26,41 @@ def dashboard(current_admin: Admin = Depends(get_current_user), db: Session = De
     return get_dashboard_data(current_admin.admin_id, db)
 
 @router.get("/houselist")
-def get_admin_houses(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
+def get_admin_houses(
+    page: int = Query(1, ge=1, description="Page number"),
+    db: Session = Depends(get_db), 
+    current_admin: Admin = Depends(get_current_user)
+):
     """
-    Get all houses assigned to the current admin.
+    Get houses assigned to the current admin with pagination (10 houses per page).
     """
     if not hasattr(current_admin, "admin_id"):
         raise HTTPException(status_code=403, detail="Not authorized as admin")
-    houses = db.query(House).filter(House.assigned_for == current_admin.admin_id).all()
-    return houses
+    
+    # Calculate offset
+    per_page = 10
+    offset = (page - 1) * per_page
+    
+    # Get total count
+    total_houses = db.query(House).filter(House.assigned_for == current_admin.admin_id).count()
+    
+    # Get paginated houses
+    houses = db.query(House).filter(
+        House.assigned_for == current_admin.admin_id
+    ).offset(offset).limit(per_page).all()
+    
+    # Calculate total pages
+    total_pages = (total_houses + per_page - 1) // per_page
+    
+    return {
+        "houses": houses,
+        "pagination": {
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_houses": total_houses,
+            "houses_per_page": per_page
+        }
+    }
 
 @router.delete("/delete/{house_id}")
 def delete_house(house_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_user)):
@@ -70,6 +97,7 @@ def update_house(house_id: int, updated_data: HouseUpdate, db: Session = Depends
 
 @router.post("/house-post")
 async def admin_post_house(
+    area: str = Form(...),
     category: str = Form(...),
     location: str = Form(...),
     address: str = Form(...),
@@ -100,6 +128,8 @@ async def admin_post_house(
         raise HTTPException(status_code=403, detail="Not authorized as admin")
 
     errors = {}
+    if not area.strip():
+        errors["area"] = "Area is required."
     if not category.strip():
         errors["category"] = "Category is required."
     if not location.strip():
@@ -122,10 +152,12 @@ async def admin_post_house(
         errors["description"] = "Description must be at least 20 characters."
     if price <= 0:
         errors["price"] = "Price must be greater than 0."
-    if negotiability not in ["open to negotiation", "not negotiable"]:
+    if negotiability not in ["open to negotiation", "not"]:
         errors["negotiability"] = "Invalid negotiability value."
     if not listedBy.strip():
         errors["listedBy"] = "Listed by is required."
+    elif listedBy not in ["agent", "owner"]:
+        errors["listedBy"] = "Listed by must be either 'agent' or 'owner'."
     if not name.strip():
         errors["name"] = "Name is required."
     if not phoneNumber.strip():
@@ -148,6 +180,11 @@ async def admin_post_house(
     if errors:
         raise HTTPException(status_code=400, detail=errors)
 
+    # Fetch area_code from Area table using area name
+    area_obj = db.query(Area).filter(Area.name == area.strip()).first()
+    if not area_obj:
+        raise HTTPException(status_code=400, detail=f"Area '{area}' does not exist in the Area table.")
+
     image_paths = []
     os.makedirs("media/house_photos", exist_ok=True)
     for photo in photos:
@@ -159,11 +196,22 @@ async def admin_post_house(
 
     owner_user = db.query(User).filter(User.phone_no == phoneNumber).first()
     if not owner_user:
-        return {"success": False, "message": "User not found."}
+        # Create new user with default password
+        hashed_password = get_password_hash("00000000")
+        new_user = User(
+            name=name,
+            phone_no=phoneNumber,
+            password=hashed_password
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        owner_user = new_user
 
     house = House(
         category=category,
-        location=location,
+        area_code=area_obj.code,  # Use the fetched area code
+        location=location.strip(),  # Keep location as a separate field
         address=address,
         size=size,
         condition=condition,
@@ -279,3 +327,42 @@ def create_failure_report(
     db.add(report)
     db.commit()
     return {"detail": "Failure report created"}
+
+@router.get("/area")
+def getarea(db: Session = Depends(get_db)):
+    """
+    Get all areas from the database.
+    """
+    areas = db.query(Area).all()
+    return areas
+
+@router.post("/area")
+def create_area(area: AreaCreate, db: Session = Depends(get_db)):
+    """
+    Create a new area.
+    """
+    try:
+        # Validate area name
+        if not area.name or not area.name.strip():
+            raise HTTPException(status_code=400, detail="Area name cannot be empty")
+        
+        # Check if area name already exists
+        existing_area = db.query(Area).filter(Area.name == area.name.strip()).first()
+        if existing_area:
+            raise HTTPException(status_code=400, detail="Area with this name already exists")
+        
+        # Get the highest code and increment by 1
+        highest_code = db.query(Area.code).order_by(Area.code.desc()).first()
+        next_code = 1 if highest_code is None else highest_code[0] + 1
+        
+        new_area = Area(
+            code=next_code,
+            name=area.name.strip()
+        )
+        db.add(new_area)
+        db.commit()
+        db.refresh(new_area)
+        return {"detail": "Area created successfully", "area": new_area}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
