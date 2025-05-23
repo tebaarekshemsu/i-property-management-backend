@@ -12,6 +12,8 @@ from app.services.user import (
     posted_house,
     fetch_visit_r,
 )
+from app.models import House 
+import random
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.schemas import UserCreate
@@ -30,39 +32,60 @@ def to_dict(obj):
 router = APIRouter(prefix="/user", tags=["User"])
 
 
+from fastapi import Request
+import random
+
 @router.post("/signup")
-def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+async def signup(request: Request, db: Session = Depends(get_db)):
     """
-    Create a new user.
+    Create a new user without using a schema.
     """
-    print(f"Attempting signup for phone number: {user_data.phone_no}")
     try:
-        existing_user = db.query(User).filter(User.phone_no == user_data.phone_no).first()
+        data = await request.json()
+
+        phone_no = data.get("phone_no")
+        password = data.get("password")
+        name = data.get("name")
+        invited_by = data.get("invited_by", None)
+
+        print(f"Attempting signup for phone number: {phone_no}")
+
+        if not all([phone_no, password, name]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        existing_user = db.query(User).filter(User.phone_no == phone_no).first()
         if existing_user:
-            print(f"Signup failed: Phone number already exists for {user_data.phone_no}")
+            print(f"Signup failed: Phone number already exists for {phone_no}")
             raise HTTPException(status_code=400, detail="Phone number already exists")
 
-        hashed_password = get_password_hash(user_data.password)
+        hashed_password = get_password_hash(password)
         new_user = User(
-            name=user_data.name,
-            phone_no=user_data.phone_no,
+            name=name,
+            phone_no=phone_no,
             password=hashed_password,
-            invitation_code=user_data.invitation_code,
-            invited_by=user_data.invited_by if user_data.invited_by else None,
+            invited_by=invited_by
         )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        
-        return {"status": "ok", "msg": "User signed up successfully"}
+
+        # Generate invitation code based on user_id + 4-digit random number
+        random_number = random.randint(1000, 9999)
+        new_user.invitation_code = f"{new_user.user_id}{random_number}"
+        db.commit()
+
+        return {
+            "status": "ok",
+            "msg": "User signed up successfully",
+            "invitation_code": new_user.invitation_code
+        }
+
     except HTTPException as http_exception:
-        print(f"HTTPException during signup for {user_data.phone_no}: {http_exception.detail}")
         raise http_exception
     except Exception as e:
-        print(f"An unexpected error occurred during signup for {user_data.phone_no}: {str(e)}")
-        db.rollback()  # Rollback the database session in case of an error
+        db.rollback()
+        print(f"Error during signup: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred during signup: {str(e)}")
-
 
 @router.get("/")
 def index():
@@ -252,6 +275,26 @@ def fetch_posted_houses(current_user: User = Depends(get_current_user)):
     """
     return posted_house.fetch_posted_houses(current_user)
 
+from fastapi import Path
+
+@router.delete("/house/{house_id}")
+def delete_house(
+    house_id: int = Path(..., description="The ID of the house to delete"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a specific house posted by the current user.
+    """
+
+    # Fetch the house by ID and user ID (to ensure ownership)
+    house = db.query(House).filter(House.house_id == house_id, House.owner_id == current_user.user_id).first()
+    if not house:
+        raise HTTPException(status_code=404, detail="House not found or not owned by the current user")
+
+    db.delete(house)
+    db.commit()
+    return {"status": "ok", "msg": f"House with ID {house_id} deleted successfully"}
 
 @router.get("/fetch_visit_request")
 def fetch_visit_requests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
